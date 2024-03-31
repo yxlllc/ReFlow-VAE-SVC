@@ -63,6 +63,7 @@ class Bi_RectifiedFlow(nn.Module):
             x_0 = x_start.transpose(1, 2).unsqueeze(1) # [B, 1, M, T]
             x_1 = self.norm_spec(x_end).transpose(1, 2).unsqueeze(1)  # [B, 1, M, T]
             t = torch.rand(x_0.shape[0], device=x_0.device)
+            t = torch.clip(t, 1e-8, 1-1e-8)
             return self.reflow_loss(x_1, x_0, t, cond=cond)
         else:
             # initial condition and step size of the ODE      
