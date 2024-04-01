@@ -8,6 +8,10 @@ import time
 import yaml
 import datetime
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
