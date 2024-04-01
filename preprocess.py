@@ -3,6 +3,11 @@ import numpy as np
 import random
 import librosa
 import torch
+try:
+    import torch_musa
+    use_torch_musa = True
+except ImportError:
+    use_torch_musa = False
 import pyworld as pw
 import parselmouth
 import argparse
@@ -29,7 +34,7 @@ def parse_args(args=None, namespace=None):
         type=str,
         default=None,
         required=False,
-        help="cpu or cuda, auto if not set")
+        help="cpu/cuda/musa, auto if not set")
     return parser.parse_args(args=args, namespace=namespace)
     
 def preprocess(path, f0_extractor, volume_extractor, mel_extractor, units_encoder, sample_rate, hop_size, device = 'cuda', use_pitch_aug = False, extensions = ['wav']):
@@ -146,7 +151,15 @@ if __name__ == '__main__':
 
     device = cmd.device
     if device is None:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif use_torch_musa:
+            if torch.musa.is_available():
+                device = 'musa'
+            else:
+                device = 'cpu'
+        else:
+            device = 'cpu'
 
     # load config
     args = utils.load_config(cmd.config)
