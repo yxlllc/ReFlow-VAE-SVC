@@ -1,5 +1,9 @@
 import librosa
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 import torchaudio
 
 

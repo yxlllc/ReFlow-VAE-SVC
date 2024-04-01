@@ -2,11 +2,16 @@ import os
 import time
 import numpy as np
 import torch
+try:
+    import torch_musa
+    use_torch_musa = True
+except ImportError:
+    use_torch_musa = False
 import librosa
 from logger.saver import Saver
 from logger import utils
 from torch import autocast
-from torch.cuda.amp import GradScaler
+# from torch.cuda.amp import GradScaler
 
 def test(args, model, vocoder, loader_test, saver):
     print(' [*] testing...')
@@ -99,7 +104,11 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
     start_epoch = initial_global_step // num_batches
     model.train()
     saver.log_info('======= start training =======')
-    scaler = GradScaler()
+    if use_torch_musa:
+        scaler = torch.musa.amp.GradScaler()
+    else:
+        scaler = torch.cuda.amp.GradScaler()
+    
     if args.train.amp_dtype == 'fp32':
         dtype = torch.float32
     elif args.train.amp_dtype == 'fp16':
@@ -123,9 +132,14 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
                 loss = model(data['units'].float(), data['f0'], data['volume'], data['spk_id'], 
                                 aug_shift=data['aug_shift'], vocoder=vocoder, gt_spec=data['mel'].float(), infer=False)
             else:
-                with autocast(device_type=args.device, dtype=dtype):
-                    loss = model(data['units'], data['f0'], data['volume'], data['spk_id'], 
-                                    aug_shift=data['aug_shift'], vocoder=vocoder, gt_spec=data['mel'].float(), infer=False)
+                if use_torch_musa:   
+                    with torch.musa.amp.autocast(dtype=dtype):
+                        loss = model(data['units'], data['f0'], data['volume'], data['spk_id'], 
+                                        aug_shift=data['aug_shift'], vocoder=vocoder, gt_spec=data['mel'].float(), infer=False)
+                else:
+                    with autocast(device_type=args.device, dtype=dtype):
+                        loss = model(data['units'], data['f0'], data['volume'], data['spk_id'], 
+                                        aug_shift=data['aug_shift'], vocoder=vocoder, gt_spec=data['mel'].float(), infer=False)
             
             # handle nan loss
             if torch.isnan(loss):

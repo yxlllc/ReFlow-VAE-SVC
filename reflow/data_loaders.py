@@ -4,6 +4,10 @@ import re
 import numpy as np
 import librosa
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 import random
 from tqdm import tqdm
 from torch.utils.data import Dataset

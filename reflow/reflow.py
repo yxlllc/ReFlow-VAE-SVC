@@ -1,5 +1,9 @@
 import numpy as np
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 import torch.nn.functional as F
 from torch import nn
 from tqdm import tqdm
