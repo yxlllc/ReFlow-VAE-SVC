@@ -2,6 +2,10 @@ import glob
 import os
 import matplotlib
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 from torch.nn.utils import weight_norm
 matplotlib.use("Agg")
 import matplotlib.pylab as plt
