@@ -1,6 +1,10 @@
 import os
 import argparse
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 from torch.optim import lr_scheduler
 from logger import utils
 from reflow.data_loaders import get_data_loaders

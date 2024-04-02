@@ -1,5 +1,10 @@
 import os
 import torch
+try:
+    import torch_musa
+    use_torch_musa = True
+except ImportError:
+    use_torch_musa = False
 import librosa
 import argparse
 import numpy as np
@@ -31,7 +36,7 @@ def parse_args(args=None, namespace=None):
         type=str,
         default=None,
         required=False,
-        help="cpu or cuda, auto if not set")
+        help="cpu/cuda/musa, auto if not set")
     parser.add_argument(
         "-i",
         "--input",
@@ -180,7 +185,15 @@ if __name__ == '__main__':
     #device = 'cpu' 
     device = cmd.device
     if device is None:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if torch.cuda.is_available():
+            device = 'cuda'
+        elif use_torch_musa:
+            if torch.musa.is_available():
+                device = 'musa'
+            else:
+                device = 'cpu'
+        else:
+            device = 'cpu'
     
     # load reflow model
     model, vocoder, args = load_model_vocoder(cmd.model_ckpt, device=device)

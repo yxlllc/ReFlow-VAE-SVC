@@ -1,6 +1,11 @@
 import os
 import yaml
 import torch
+try:
+    import torch_musa
+    use_torch_musa = True
+except ImportError:
+    use_torch_musa = False
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
@@ -58,7 +63,15 @@ def load_model_vocoder(
 class Vocoder:
     def __init__(self, vocoder_type, vocoder_ckpt, device = None):
         if device is None:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            if torch.cuda.is_available():
+                device = 'cuda'
+            elif use_torch_musa:
+                if torch.musa.is_available():
+                    device = 'musa'
+                else:
+                    device = 'cpu'
+            else:
+                device = 'cpu'
         self.device = device
         
         if vocoder_type == 'nsf-hifigan':
@@ -98,7 +111,15 @@ class NsfHifiGAN(torch.nn.Module):
     def __init__(self, model_path, device=None):
         super().__init__()
         if device is None:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            if torch.cuda.is_available():
+                device = 'cuda'
+            elif use_torch_musa:
+                if torch.musa.is_available():
+                    device = 'musa'
+                else:
+                    device = 'cpu'
+            else:
+                device = 'cpu'
         self.device = device
         self.model_path = model_path
         self.model = None

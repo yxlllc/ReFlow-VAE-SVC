@@ -2,6 +2,11 @@ import os
 import json
 import numpy as np
 import torch
+try:
+    import torch_musa
+    use_torch_musa = True
+except ImportError:
+    use_torch_musa = False
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import AvgPool1d, Conv1d, Conv2d, ConvTranspose1d
@@ -174,12 +179,20 @@ class SineGen(torch.nn.Module):
         """ f0_values: (batchsize, length, dim)
             where dim indicates fundamental tone and overtones
         """
-        rad_values = (f0_values / self.sampling_rate).fmod(1.)  # %1意味着n_har的乘积无法后处理优化
+        if use_torch_musa:
+            rad_values = (f0_values / self.sampling_rate) % 1
+        else:
+            rad_values = (f0_values / self.sampling_rate).fmod(1.)  # %1意味着n_har的乘积无法后处理优化
         rand_ini = torch.rand(1, self.dim, device=f0_values.device)
         rand_ini[:, 0] = 0
         rad_values[:, 0, :] += rand_ini
         is_half = rad_values.dtype is not torch.float32
-        tmp_over_one = torch.cumsum(rad_values.double(), 1)  # % 1  #####%1意味着后面的cumsum无法再优化
+        if use_torch_musa:
+            rad_values_cpu = rad_values.cpu()
+            tmp_over_one_cpu = torch.cumsum(rad_values_cpu.double(), 1)
+            tmp_over_one = tmp_over_one_cpu.to(rad_values.device)
+        else:
+            tmp_over_one = torch.cumsum(rad_values.double(), 1)  # % 1  #####%1意味着后面的cumsum无法再优化
         if is_half:
             tmp_over_one = tmp_over_one.half()
         else:
@@ -190,7 +203,10 @@ class SineGen(torch.nn.Module):
             mode='linear', align_corners=True
         ).transpose(2, 1)
         rad_values = F.interpolate(rad_values.transpose(2, 1), scale_factor=upp, mode='nearest').transpose(2, 1)
-        tmp_over_one = tmp_over_one.fmod(1.)
+        if use_torch_musa:
+            tmp_over_one = tmp_over_one % 1
+        else:
+            tmp_over_one = tmp_over_one.fmod(1.)
         diff = F.conv2d(
             tmp_over_one.unsqueeze(1), torch.FloatTensor([[[[-1.], [1.]]]]).to(tmp_over_one.device),
             stride=(1, 1), padding=0, dilation=(1, 1)
@@ -200,7 +216,14 @@ class SineGen(torch.nn.Module):
             torch.zeros((f0_values.size()[0], 1, self.dim), dtype=torch.double).to(f0_values.device),
             cumsum_shift
         ), dim=1)
-        sines = torch.sin(torch.cumsum(rad_values.double() + cumsum_shift, dim=1) * 2 * np.pi)
+        if use_torch_musa:
+            rad_values_cpu = rad_values.cpu()
+            cumsum_shift_cpu = cumsum_shift.cpu()
+            cumsum_result_cpu = torch.cumsum(rad_values_cpu.double() + cumsum_shift_cpu, dim=1)
+            sines_cpu = torch.sin(cumsum_result_cpu * 2 * np.pi)
+            sines = sines_cpu.to(rad_values.device)
+        else:
+            sines = torch.sin(torch.cumsum(rad_values.double() + cumsum_shift, dim=1) * 2 * np.pi)
         if is_half:
             sines = sines.half()
         else:

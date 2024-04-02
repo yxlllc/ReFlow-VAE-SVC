@@ -5,6 +5,10 @@ import random
 from sklearn.cluster import KMeans
 
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.utils import consume_prefix_in_state_dict_if_present

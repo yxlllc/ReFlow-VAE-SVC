@@ -3,6 +3,10 @@ import yaml
 import json
 import pickle
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 
 def traverse_dir(
         root_dir,

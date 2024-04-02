@@ -2,6 +2,11 @@ import os
 import numpy as np
 import yaml
 import torch
+try:
+    import torch_musa
+    use_torch_musa = True
+except ImportError:
+    use_torch_musa = False
 import torch.nn.functional as F
 import pyworld as pw
 import parselmouth
@@ -35,7 +40,15 @@ class F0_Extractor:
                 F0_KERNEL['rmvpe'] = RMVPE('pretrain/rmvpe/model.pt', hop_length=160)
             self.rmvpe = F0_KERNEL['rmvpe']
         if f0_extractor == 'fcpe':
-            self.device_fcpe = 'cuda' if torch.cuda.is_available() else 'cpu'
+            if torch.cuda.is_available():
+                self.device_fcpe = 'cuda'
+            elif use_torch_musa:
+                if torch.musa.is_available():
+                    self.device_fcpe = 'musa'
+                else:
+                    self.device_fcpe = 'cpu'
+            else:
+                self.device_fcpe = 'cpu'
             if 'fcpe' not in F0_KERNEL :
                 from torchfcpe import spawn_bundled_infer_model
                 F0_KERNEL['fcpe'] = spawn_bundled_infer_model(device=self.device_fcpe)
@@ -159,7 +172,15 @@ class Units_Encoder:
     def __init__(self, encoder, encoder_ckpt, encoder_sample_rate = 16000, encoder_hop_size = 320, device = None,
                  cnhubertsoft_gate=10):
         if device is None:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            if torch.cuda.is_available():
+                device = 'cuda'
+            elif use_torch_musa:
+                if torch.musa.is_available():
+                    device = 'musa'
+                else:
+                    device = 'cpu'
+            else:
+                device = 'cpu'
         self.device = device
         
         is_loaded_encoder = False
