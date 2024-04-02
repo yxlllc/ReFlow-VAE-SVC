@@ -47,7 +47,8 @@ if __name__ == '__main__':
                     vocoder.dimension,
                     args.model.n_layers,
                     args.model.n_chans,
-                    args.model.n_hidden)    
+                    args.model.n_hidden,
+                    args.model.back_bone)    
     else:
         raise ValueError(f" [x] Unknown Model: {args.model.type}")
     
