@@ -14,6 +14,7 @@ from nsf_hifigan.models import load_model,load_config
 from torchaudio.transforms import Resample
 from .reflow import Bi_RectifiedFlow
 from .naive_v2_diff import NaiveV2Diff
+from .wavenet import WaveNet
 
 class DotDict(dict):
     def __getattr__(*args):         
@@ -47,7 +48,8 @@ def load_model_vocoder(
                     vocoder.dimension,
                     args.model.n_layers,
                     args.model.n_chans,
-                    args.model.n_hidden)
+                    args.model.n_hidden,
+                    args.model.back_bone)
                     
     else:
         raise ValueError(f" [x] Unknown Model: {args.model.type}")
@@ -179,7 +181,8 @@ class Unit2Wav_VAE(nn.Module):
             out_dims=128,
             n_layers=6, 
             n_chans=512,
-            n_hidden=256):
+            n_hidden=256,
+            back_bone='naive_v2'):
         super().__init__()
         self.unit_embed = nn.Linear(n_unit, out_dims)
         self.f0_embed = nn.Linear(1, n_hidden)
@@ -191,9 +194,13 @@ class Unit2Wav_VAE(nn.Module):
         self.n_spk = n_spk
         if n_spk is not None and n_spk > 1:
             self.spk_embed = nn.Embedding(n_spk, n_hidden)
+        if back_bone is None or back_bone == 'naive_v2':        
+            self.reflow_model = Bi_RectifiedFlow(NaiveV2Diff(mel_channels=out_dims, dim=n_chans, num_layers=n_layers, condition_dim=n_hidden, use_mlp=False))
+        elif back_bone == 'wavenet':
+            self.reflow_model = Bi_RectifiedFlow(WaveNet(in_dims=out_dims, n_layers=n_layers, n_chans=n_chans, n_hidden=n_hidden))
+        else:
+            raise ValueError(f" [x] Unknown Backbone: {back_bone}")
             
-        self.reflow_model = Bi_RectifiedFlow(NaiveV2Diff(mel_channels=out_dims, dim=n_chans, num_layers=n_layers, condition_dim=n_hidden, use_mlp=False), out_dims=out_dims)
-
     def forward(self, units, f0, volume, spk_id=None, spk_mix_dict=None, aug_shift=None, vocoder=None,
                 gt_spec=None, infer=True, return_wav=False, infer_step=10, method='euler', t_start=0.0, use_tqdm=True):
         

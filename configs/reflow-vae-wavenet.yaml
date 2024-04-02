@@ -17,7 +17,8 @@ data:
     - wav
 model:
   type: 'RectifiedFlow_VAE'
-  n_layers: 6
+  back_bone: 'wavenet'
+  n_layers: 20
   n_chans: 512
   n_hidden: 256
   use_pitch_aug: true

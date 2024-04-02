@@ -12,12 +12,10 @@ from tqdm import tqdm
 class Bi_RectifiedFlow(nn.Module):
     def __init__(self, 
                 velocity_fn,
-                out_dims=128,
                 spec_min=-12, 
                 spec_max=2):
         super().__init__()
         self.velocity_fn = velocity_fn
-        self.out_dims = out_dims
         self.spec_min = spec_min
         self.spec_max = spec_max
     
