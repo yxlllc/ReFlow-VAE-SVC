@@ -1,0 +1,15 @@
+fairseq
+librosa
+matplotlib
+numpy
+parselmouth
+pyworld
+PyYAML
+resampy
+scikit_learn
+scipy
+SoundFile
+torchcrepe
+torchfcpe
+tqdm
+transformers
