@@ -2,6 +2,10 @@ import math
 from math import sqrt
 
 import torch
+try:
+    import torch_musa
+except ImportError:
+    pass
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Mish

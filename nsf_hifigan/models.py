@@ -359,14 +359,14 @@ class Generator(torch.nn.Module):
 
             remove_weight_norm(self.conv_pre)
             remove_weight_norm(self.conv_post)
-        else:
-            for l in self.ups:
-                torch.nn.utils.parametrize.remove_parametrizations(l)
-            for l in self.resblocks:
-                l.remove_weight_norm()
-
-            torch.nn.utils.parametrize.remove_parametrizations(self.conv_pre)
-            torch.nn.utils.parametrize.remove_parametrizations(self.conv_post)
+        #else:
+        #    for l in self.ups:
+        #        torch.nn.utils.parametrize.remove_parametrizations(l)
+        #    for l in self.resblocks:
+        #        l.remove_weight_norm()
+        #
+        #    torch.nn.utils.parametrize.remove_parametrizations(self.conv_pre)
+        #    torch.nn.utils.parametrize.remove_parametrizations(self.conv_post)
 
 
 

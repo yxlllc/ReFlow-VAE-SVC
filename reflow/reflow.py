@@ -49,6 +49,34 @@ class Bi_RectifiedFlow(nn.Module):
         t += dt
         return x, t
         
+    def sample_heun(self, x, t, dt, cond=None):
+        # Predict
+        k_1 = self.velocity_fn(x, 1000 * t, cond=cond)
+        x_pred = x + k_1 * dt
+        t_pred = t + dt
+        # Correct
+        k_2 = self.velocity_fn(x_pred, 1000 * t_pred, cond=cond)
+        x += (k_1 + k_2) / 2 * dt
+        t += dt
+        return x, t
+
+    def sample_PECECE(self, x, t, dt, cond=None):
+        # Predict1
+        k_1 = self.velocity_fn(x, 1000 * t, cond=cond)
+        x_pred1 = x + k_1 * dt
+        t_pred1 = t + dt
+        # Correct1
+        k_2 = self.velocity_fn(x_pred1, 1000 * t_pred1, cond=cond)
+        x_corr1 = x + (k_1 + k_2) / 2 * dt
+        # Predict2
+        k_3 = self.velocity_fn(x_corr1, 1000 * (t + dt), cond=cond)
+        x_pred2 = x_corr1 + k_3 * dt
+        # Correct2
+        k_4 = self.velocity_fn(x_pred2, 1000 * (t + 2*dt), cond=cond)
+        x += (k_3 + k_4) / 2 * dt
+        t += dt
+        return x, t
+        
     def forward(self, 
                 infer=True,
                 x_start=None,
@@ -104,6 +132,22 @@ class Bi_RectifiedFlow(nn.Module):
                 else:
                     for i in range(infer_step):
                         x, t = self.sample_rk4(x, t, dt, cond=cond)
+            
+            elif method == 'heun':
+                if use_tqdm:
+                    for i in tqdm(range(infer_step), desc='sample time step', total=infer_step):
+                        x, t = self.sample_heun(x, t, dt, cond=cond)
+                else:
+                    for i in range(infer_step):
+                        x, t = self.sample_heun(x, t, dt, cond=cond)
+                        
+            elif method == 'PECECE':
+                if use_tqdm:
+                    for i in tqdm(range(infer_step), desc='sample time step', total=infer_step):
+                        x, t = self.sample_PECECE(x, t, dt, cond=cond)
+                else:
+                    for i in range(infer_step):
+                        x, t = self.sample_PECECE(x, t, dt, cond=cond)
             
             else:
                 raise NotImplementedError(method)
