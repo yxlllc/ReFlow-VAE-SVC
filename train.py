@@ -48,7 +48,8 @@ if __name__ == '__main__':
                     args.model.n_layers,
                     args.model.n_chans,
                     args.model.n_hidden,
-                    args.model.back_bone)    
+                    args.model.back_bone,
+                    args.model.use_attention)    
     else:
         raise ValueError(f" [x] Unknown Model: {args.model.type}")
     

@@ -22,6 +22,7 @@ model:
   n_chans: 512
   n_hidden: 256
   use_pitch_aug: true
+  use_attention: true
   n_spk: 1 # max number of different speakers
 device: cuda # training device
 vocoder:
