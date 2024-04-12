@@ -9,11 +9,12 @@
 python preprocess.py -c configs/reflow-vae.yaml
 ```
 
-（2）训练：
+（2）训练（无底模）：
 
 ```bash
 python train.py -c configs/reflow-vae.yaml
 ```
+Beta版底模可以在这里下载：https://huggingface.co/OOPPEENN/pretrained_model
 
 （3）非实时推理：
 
