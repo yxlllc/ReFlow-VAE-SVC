@@ -4,12 +4,22 @@ from math import sqrt
 import torch
 try:
     import torch_musa
+    use_torch_musa = True
 except ImportError:
-    pass
+    from torch.nn import Mish
+    use_torch_musa = False
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Mish
 from transformers.models.roformer.modeling_roformer import RoFormerEncoder, RoFormerConfig
+
+
+if use_torch_musa:
+    class Mish(nn.Module):
+        def __init__(self):
+            super().__init__()
+
+        def forward(self, x):
+            return x * (torch.tanh(F.softplus(x)))
 
 
 class Conv1d(torch.nn.Conv1d):
