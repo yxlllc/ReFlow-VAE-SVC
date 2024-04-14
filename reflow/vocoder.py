@@ -24,14 +24,6 @@ class DotDict(dict):
     __setattr__ = dict.__setitem__    
     __delattr__ = dict.__delitem__
 
-class Transpose(nn.Module):
-    def __init__(self, dims):
-        super().__init__()
-        assert len(dims) == 2, 'dims must be a tuple of two dimensions'
-        self.dims = dims
-
-    def forward(self, x):
-        return x.transpose(*self.dims)
         
 def load_model_vocoder(
         model_path,
@@ -191,7 +183,7 @@ class Unit2Wav_VAE(nn.Module):
             n_layers=6, 
             n_chans=512,
             n_hidden=256,
-            back_bone='naive_v2',
+            back_bone='lynxnet',
             use_attention=False):
         super().__init__()
         self.f0_embed = nn.Linear(1, n_hidden)
@@ -219,7 +211,7 @@ class Unit2Wav_VAE(nn.Module):
         self.n_spk = n_spk
         if n_spk is not None and n_spk > 1:
             self.spk_embed = nn.Embedding(n_spk, n_hidden)
-        if back_bone is None or back_bone == 'naive_v2':        
+        if back_bone is None or back_bone == 'lynxnet':        
             self.reflow_model = Bi_RectifiedFlow(NaiveV2Diff(mel_channels=out_dims, dim=n_chans, num_layers=n_layers, condition_dim=n_hidden, use_mlp=False))
         elif back_bone == 'wavenet':
             self.reflow_model = Bi_RectifiedFlow(WaveNet(in_dims=out_dims, n_layers=n_layers, n_chans=n_chans, n_hidden=n_hidden))

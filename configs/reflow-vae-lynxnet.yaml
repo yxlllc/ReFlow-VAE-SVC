@@ -17,6 +17,7 @@ data:
     - wav
 model:
   type: 'RectifiedFlow_VAE'
+  back_bone: 'lynxnet'
   n_layers: 6
   n_chans: 512
   n_hidden: 256
