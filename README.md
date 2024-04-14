@@ -6,13 +6,13 @@
 （1）预处理：
 
 ```bash
-python preprocess.py -c configs/reflow-vae.yaml
+python preprocess.py -c configs/reflow-vae-wavenet.yaml
 ```
 
 （2）训练：
 
 ```bash
-python train.py -c configs/reflow-vae.yaml
+python train.py -c configs/reflow-vae-wavenet.yaml
 ```
 
 （3）非实时推理：
