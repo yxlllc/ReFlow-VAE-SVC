@@ -2,7 +2,7 @@ fairseq
 librosa
 matplotlib
 numpy
-parselmouth
+praat-parselmouth
 pyworld
 PyYAML
 resampy
