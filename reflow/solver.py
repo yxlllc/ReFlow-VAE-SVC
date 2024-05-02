@@ -13,6 +13,17 @@ from logger import utils
 from torch import autocast
 # from torch.cuda.amp import GradScaler
 
+def clip_grad_value_(parameters, clip_value):
+    if isinstance(parameters, torch.Tensor):
+        parameters = [parameters]
+
+    parameters_with_grad = [p for p in parameters if p.grad is not None]
+
+    torch.nn.utils.clip_grad_value_(parameters_with_grad, clip_value)
+    
+    total_norm = torch.norm(torch.stack([torch.norm(p.grad.detach(), 2) for p in parameters_with_grad]), 2)
+    return total_norm
+    
 def test(args, model, vocoder, loader_test, saver):
     print(' [*] testing...')
     model.eval()
@@ -148,9 +159,12 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
                 # backpropagate
                 if dtype == torch.float32:
                     loss.backward()
+                    grad_norm = clip_grad_value_(model.parameters(), 1)
                     optimizer.step()
                 else:
                     scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
+                    grad_norm = clip_grad_value_(model.parameters(), 1)
                     scaler.step(optimizer)
                     scaler.update()
                 scheduler.step()
@@ -159,7 +173,7 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
             if saver.global_step % args.train.interval_log == 0:
                 current_lr =  optimizer.param_groups[0]['lr']
                 saver.log_info(
-                    'epoch: {} | {:3d}/{:3d} | {} | batch/s: {:.2f} | lr: {:.6} | loss: {:.3f} | time: {} | step: {}'.format(
+                    'epoch: {} | {:3d}/{:3d} | {} | batch/s: {:.2f} | lr: {:.6} | loss: {:.3f} | time: {} | step: {} | grad: {:.2f}'.format(
                         epoch,
                         batch_idx,
                         num_batches,
@@ -168,13 +182,15 @@ def train(args, initial_global_step, model, optimizer, scheduler, vocoder, loade
                         current_lr,
                         loss.item(),
                         saver.get_total_time(),
-                        saver.global_step
+                        saver.global_step,
+                        grad_norm
                     )
                 )
                 
                 saver.log_value({
                     'train/loss': loss.item(),
-                    'train/lr': current_lr
+                    'train/lr': current_lr,
+                    'train/grad_norm': grad_norm
                 })
             
             # validation
