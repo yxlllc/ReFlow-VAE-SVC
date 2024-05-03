@@ -1,7 +1,6 @@
 import os
 import yaml
 import json
-import pickle
 import torch
 try:
     import torch_musa

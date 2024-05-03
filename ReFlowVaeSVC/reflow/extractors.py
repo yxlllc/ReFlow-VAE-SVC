@@ -1,6 +1,4 @@
-import os
 import numpy as np
-import yaml
 import torch
 try:
     import torch_musa
@@ -11,13 +9,11 @@ import torch.nn.functional as F
 import pyworld as pw
 import parselmouth
 import torchcrepe
-import resampy
 from transformers import HubertModel, Wav2Vec2FeatureExtractor
 from fairseq import checkpoint_utils
-from encoder.hubert.model import HubertSoft
+from ReFlowVaeSVC.encoder.hubert.model import HubertSoft
 from torch.nn.modules.utils import consume_prefix_in_state_dict_if_present
 from torchaudio.transforms import Resample
-import time
 
 CREPE_RESAMPLE_KERNEL = {}
 F0_KERNEL = {}
@@ -78,7 +74,7 @@ class F0_Extractor:
             self.resample_kernel = CREPE_RESAMPLE_KERNEL[key_str]
         if f0_extractor == 'rmvpe':
             if 'rmvpe' not in F0_KERNEL :
-                from encoder.rmvpe import RMVPE
+                from ReFlowVaeSVC.encoder.rmvpe.inference import RMVPE
                 F0_KERNEL['rmvpe'] = RMVPE('pretrain/rmvpe/model.pt', hop_length=160)
             self.rmvpe = F0_KERNEL['rmvpe']
         if f0_extractor == 'fcpe':

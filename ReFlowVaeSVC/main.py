@@ -9,14 +9,12 @@ import librosa
 import argparse
 import numpy as np
 import soundfile as sf
-import pyworld as pw
-import parselmouth
 import hashlib
 import torch.nn.functional as F
 from ast import literal_eval
-from slicer import Slicer
-from reflow.extractors import F0_Extractor, Volume_Extractor, Units_Encoder
-from reflow.vocoder import load_model_vocoder
+from ReFlowVaeSVC.slicer import Slicer
+from ReFlowVaeSVC.reflow.extractors import F0_Extractor, Volume_Extractor, Units_Encoder
+from ReFlowVaeSVC.reflow.vocoder import load_model_vocoder
 from tqdm import tqdm
 
 

@@ -7,10 +7,9 @@ try:
 except ImportError:
     use_torch_musa = False
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
-from nsf_hifigan.nvSTFT import STFT
-from nsf_hifigan.models import load_model,load_config
+from ReFlowVaeSVC.nsf_hifigan.nvSTFT import STFT
+from ReFlowVaeSVC.nsf_hifigan.models import load_model,load_config
 from torchaudio.transforms import Resample
 from .reflow import Bi_RectifiedFlow
 from .naive_v2_diff import NaiveV2Diff

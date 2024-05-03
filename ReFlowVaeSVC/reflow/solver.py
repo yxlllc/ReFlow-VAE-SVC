@@ -8,8 +8,8 @@ try:
 except ImportError:
     use_torch_musa = False
 import librosa
-from logger.saver import Saver
-from logger import utils
+from ReFlowVaeSVC.logger.saver import Saver
+from ReFlowVaeSVC.logger import utils
 from torch import autocast
 # from torch.cuda.amp import GradScaler
 
