@@ -171,5 +171,3 @@ data/*
 __pycache__
 exp/*
 dataset_raw/*
-output.wav
-ReFlowVaeSVC/cache/rmvpe_512.0_50_1100_2c38366375b8c57fc9783736d77541b6.npy
