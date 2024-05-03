@@ -8,7 +8,6 @@ try:
     import torch_musa
 except ImportError:
     pass
-import random
 from tqdm import tqdm
 from torch.utils.data import Dataset
 

@@ -6,13 +6,13 @@
 （1）预处理：
 
 ```bash
-python preprocess.py -c configs/reflow-vae-wavenet.yaml
+python -m ReFlowVaeSVC.preprocess -c configs/reflow-vae-wavenet.yaml
 ```
 
 （2）训练（无底模）：
 
 ```bash
-python train.py -c configs/reflow-vae-wavenet.yaml
+python -m ReFlowVaeSVC.train -c configs/reflow-vae-wavenet.yaml
 ```
 Beta版底模可以在这里下载：https://huggingface.co/OOPPEENN/pretrained_model
 
@@ -20,7 +20,7 @@ Beta版底模可以在这里下载：https://huggingface.co/OOPPEENN/pretrained_
 
 ```bash
 # 普通模式, 需要语义编码器, 比如 contentvec
-python main.py -i <input.wav> -m <model_ckpt.pt> -o <output.wav> -k <keychange (semitones)> -tid <target_speaker_id> -step <infer_step> -method <method>
+python -m ReFlowVaeSVC.main -i <input.wav> -m <model_ckpt.pt> -o <output.wav> -k <keychange (semitones)> -tid <target_speaker_id> -step <infer_step> -method <method>
 # VAE 模式, 无需语义编码器, 特化 sid 到 tid 的变声（或者音高编辑，如果sid == tid）
-python main.py -i <input.wav> -m <model_ckpt.pt> -o <output.wav> -k <keychange (semitones)> -sid <source_speaker_id> -tid <target_speaker_id> -step <infer_step> -method <method>
+python -m ReFlowVaeSVC.main -i <input.wav> -m <model_ckpt.pt> -o <output.wav> -k <keychange (semitones)> -sid <source_speaker_id> -tid <target_speaker_id> -step <infer_step> -method <method>
 ```
