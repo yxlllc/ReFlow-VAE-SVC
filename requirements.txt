@@ -13,3 +13,4 @@ torchcrepe
 torchfcpe
 tqdm
 transformers
+tensorboard
