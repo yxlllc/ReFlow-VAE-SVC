@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from torchaudio.transforms import Resample
 from reflow.extractors import F0_Extractor, Volume_Extractor, Units_Encoder
 import time
-from gui_reflow_locale import I18nAuto
+from I18n import I18nAuto
 from reflow.vocoder import load_model_vocoder
 
 flag_vc = False
@@ -153,6 +153,80 @@ class SvcReflow:
             if audio_alignment:
                 output[:audio_length]
             return output, self.args.data.sampling_rate
+        
+
+    def VAE_infer(self,
+              audio,
+              sample_rate,
+              source_spk_id=None,
+              target_spk_id=None,
+              pitch_adjust=0,
+              formant_shift_key=0,
+              use_spk_mix=False,
+              spk_mix_dict=None,
+              pitch_extractor_type='crepe',
+              f0_min=50,
+              f0_max=1100,
+              safe_prefix_pad_length=0,
+              sampling_method='euler',
+              infer_step=None,
+              audio_alignment=False):
+        print("Infering...")
+        # load input
+        # audio, sample_rate = librosa.load(input_wav, sr=None, mono=True)
+        hop_size = self.args.data.block_size * sample_rate / self.args.data.sampling_rate
+        if audio_alignment:
+            audio_length = len(audio)
+        # safe front silence
+        if safe_prefix_pad_length > 0.03:
+            silence_front = safe_prefix_pad_length - 0.03
+        else:
+            silence_front = 0
+        audio_t = torch.from_numpy(audio).float().unsqueeze(0).to(self.device)
+
+        # extract mel
+        mel = self.vocoder.extract(audio_t, sample_rate)
+        mel = torch.cat((mel, mel[:,-1:,:]), 1)
+
+        # extract f0
+        pitch_extractor = F0_Extractor(
+            pitch_extractor_type,
+            sample_rate,
+            hop_size,
+            float(f0_min),
+            float(f0_max))
+        f0 = pitch_extractor.extract(audio, uv_interp=True, device=self.device, silence_front=silence_front)
+        input_f0 = torch.from_numpy(f0).float().to(self.device).unsqueeze(-1).unsqueeze(0)
+        output_f0 = input_f0 * 2 ** (float(pitch_adjust) / 12) #变调
+
+        # formant change
+        formant_shift_key = torch.from_numpy(np.array([[float(formant_shift_key)]])).float().to(self.device)
+
+        # spk_id or spk_mix_dict
+        target_spk_id = torch.LongTensor(np.array([[target_spk_id]])).to(self.device)
+        source_spk_id = torch.LongTensor(np.array([[source_spk_id]])).to(self.device)
+        dictionary = None
+        if use_spk_mix:
+            dictionary = spk_mix_dict
+
+        # forward and return the output
+        with torch.no_grad():
+            output_mel = self.reflow_model.vae_infer(
+                                    mel,
+                                    input_f0,
+                                    source_spk_id,
+                                    output_f0,                               
+                                    target_spk_id,
+                                    spk_mix_dict = spk_mix_dict,
+                                    aug_shift = formant_shift_key,
+                                    infer_step=infer_step, 
+                                    method=sampling_method,
+                                    )
+            output = self.vocoder.infer(output_mel,output_f0)
+            output = output.squeeze()
+            if audio_alignment:
+                output[:audio_length]
+            return output, self.args.data.sampling_rate
 
 class Config:
     def __init__(self) -> None:
@@ -161,6 +235,7 @@ class Config:
         self.f_pitch_change: float = 0.0  # float(request_form.get("fPitchChange", 0))
         self.formant_shift_key = 0
         self.spk_id = 1  # 默认说话人。
+        self.source_spk_id = None
         self.spk_mix_dict = None  # {1:0.5, 2:0.5} 表示1号说话人和2号说话人的音色按照0.5:0.5的比例混合
         self.use_phase_vocoder = False
         self.checkpoint_path = ''
@@ -249,7 +324,8 @@ class GUI:
                 ], title=i18n('快速配置文件'))
             ],
             [sg.Frame(layout=[
-                [sg.Text(i18n("说话人id")), sg.Input(key='spk_id', default_text='1', size=8)],
+                [sg.Text(i18n("目标说话人id")), sg.Input(key='spk_id', default_text='1', size=8)],
+                [sg.Text(i18n("源说话人id(仅在VAE模式下有效)")), sg.Input(key='source_spk_id', default_text='', size=8)],                
                 [sg.Text(i18n("响应阈值")),
                  sg.Slider(range=(-60, 0), orientation='h', key='threhold', resolution=1, default_value=-45,
                            enable_events=True)],
@@ -286,7 +362,7 @@ class GUI:
 
 
         # 创造窗口
-        self.window = sg.Window('DDSP - GUI', layout, finalize=True)
+        self.window = sg.Window('Reflow-VAE-SVC - GUI', layout, finalize=True)
         self.window['spk_id'].bind('<Return>', '')
         self.window['samplerate'].bind('<Return>', '')
         self.window['infer_step'].bind('<Return>', '')
@@ -316,6 +392,8 @@ class GUI:
                 self.config.sampling_method = values['sampling_method']
             elif event == 'spk_id':
                 self.config.spk_id = int(values['spk_id'])
+            elif event == "source_spk_id":
+                self.config.source_spk_id = int(values['source_spk_id'])
             elif event == 'threhold':
                 self.config.threhold = values['threhold']
             elif event == 'pitch':
@@ -345,6 +423,7 @@ class GUI:
         self.set_devices(values["sg_input_device"], values['sg_output_device'])
         self.config.sounddevices = [values["sg_input_device"], values['sg_output_device']]
         self.config.spk_id = int(values['spk_id'])
+        self.config.source_spk_id = int(values['source_spk_id']) if values['source_spk_id'] != '' else None
         self.config.threhold = values['threhold']
         self.config.f_pitch_change = values['pitch']
         self.config.formant_shift_key = values['formant_shift_key']
@@ -372,6 +451,7 @@ class GUI:
         self.window['sg_input_device'].update(self.config.sounddevices[0])
         self.window['sg_output_device'].update(self.config.sounddevices[1])
         self.window['spk_id'].update(self.config.spk_id)
+        self.window['source_spk_id'].update(self.config.source_spk_id)
         self.window['threhold'].update(self.config.threhold)
         self.window['pitch'].update(self.config.f_pitch_change)
         self.window['formant_shift_key'].update(self.config.formant_shift_key)
@@ -427,20 +507,36 @@ class GUI:
         self.input_wav[-self.block_frame:] = librosa.to_mono(indata.T)
 
         # infer
-        _audio, _model_sr = self.svc_model.infer(
-            self.input_wav,
-            self.config.samplerate,
-            spk_id=self.config.spk_id,
-            threhold=self.config.threhold,
-            pitch_adjust=self.config.f_pitch_change,
-            formant_shift_key=self.config.formant_shift_key,
-            use_spk_mix=self.config.use_spk_mix,
-            spk_mix_dict=self.config.spk_mix_dict,
-            pitch_extractor_type=self.config.select_pitch_extractor,
-            safe_prefix_pad_length=self.f_safe_prefix_pad_length,
-            sampling_method=self.config.sampling_method,
-            infer_step=self.config.infer_step,
-        )
+        if self.config.source_spk_id == None:
+            _audio, _model_sr = self.svc_model.infer(
+                self.input_wav,
+                self.config.samplerate,
+                spk_id=self.config.spk_id,
+                threhold=self.config.threhold,
+                pitch_adjust=self.config.f_pitch_change,
+                formant_shift_key=self.config.formant_shift_key,
+                use_spk_mix=self.config.use_spk_mix,
+                spk_mix_dict=self.config.spk_mix_dict,
+                pitch_extractor_type=self.config.select_pitch_extractor,
+                safe_prefix_pad_length=self.f_safe_prefix_pad_length,
+                sampling_method=self.config.sampling_method,
+                infer_step=self.config.infer_step,
+            )
+        else:
+            _audio, _model_sr = self.svc_model.VAE_infer(
+                self.input_wav,
+                self.config.samplerate,
+                target_spk_id=self.config.spk_id,
+                source_spk_id=self.config.source_spk_id,
+                pitch_adjust=self.config.f_pitch_change,
+                formant_shift_key=self.config.formant_shift_key,
+                use_spk_mix=self.config.use_spk_mix,
+                spk_mix_dict=self.config.spk_mix_dict,
+                pitch_extractor_type=self.config.select_pitch_extractor,
+                safe_prefix_pad_length=self.f_safe_prefix_pad_length,
+                sampling_method=self.config.sampling_method,
+                infer_step=self.config.infer_step,
+            )
 
         # debug sola
         '''
